@@ -325,20 +325,53 @@ void OnRadioButtonClicked(ENUM_RENKO_TYPE new_type)
 //+------------------------------------------------------------------+
 void OnFeedButtonClicked()
 {
-   // Get source chart where generator is attached
-   string source_symbol = g_generator.GetSourceSymbol();
+   if(!g_generator.IsGeneratorActive())
+   {
+      Alert("Generator is not active");
+      return;
+   }
    
-   // Find chart with source symbol
+   // Get the actual chart ID where the generator instance is attached
+   AttachedInstanceInfo info = g_generator.GetInstanceInfo();
+   long source_chart_id = info.source_chart_id;
+   
+   if(source_chart_id <= 0)
+   {
+      Alert("Source chart ID not available");
+      return;
+   }
+   
+   // Verify chart exists and bring to front
+   if(ChartSymbol(source_chart_id) != "")
+   {
+      if(ChartSetInteger(source_chart_id, CHART_BRING_TO_TOP, 0, true))
+      {
+         Print("Jumped to generator chart: ", ChartSymbol(source_chart_id), " (ID: ", source_chart_id, ")");
+         return;
+      }
+   }
+   
+   // Fallback: search by source symbol (in case chart ID is stale)
+   string source_symbol = g_generator.GetSourceSymbol();
    long chart_id = ChartFirst();
    while(chart_id >= 0)
    {
       if(ChartSymbol(chart_id) == source_symbol)
       {
-         // Found source chart - bring to front
-         if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
+         // Check if this chart has the generator indicator
+         int indicator_count = ChartIndicatorsTotal(chart_id, 0);
+         for(int i = 0; i < indicator_count; i++)
          {
-            Print("Jumped to source chart: ", source_symbol);
-            return;
+            string indicator_name = ChartIndicatorName(chart_id, 0, i);
+            if(StringFind(indicator_name, "OVO_Renko_Generator") >= 0)
+            {
+               // Found the chart with generator
+               if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
+               {
+                  Print("Jumped to generator chart (fallback): ", source_symbol);
+                  return;
+               }
+            }
          }
       }
       chart_id = ChartNext(chart_id);
