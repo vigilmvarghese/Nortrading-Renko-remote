@@ -10,30 +10,15 @@
 #property indicator_plots 0
 
 //--- Include files
-#include "../Include/RenkoRemote/RemoteTypes.mqh"
-#include "../Include/RenkoRemote/ChartSymbolParser.mqh"
-#include "../Include/RenkoRemote/GeneratorInterface.mqh"
+// Paths assume flat installation: files copied to MQL5/Include/RenkoRemote/
+#include <RenkoRemote/RemoteTypes.mqh>
+#include <RenkoRemote/ChartSymbolParser.mqh>
+#include <RenkoRemote/GeneratorInterface.mqh>
 
 //+------------------------------------------------------------------+
-//| Input Parameters                                                 |
+//| Input Parameters - HIDDEN (No user configuration)               |
 //+------------------------------------------------------------------+
-input group "===== Remote Control Settings ====="
-input int      InpUpdateIntervalMS = 500;           // Update Interval (milliseconds)
-input bool     InpShowControlPanel = true;          // Show Control Panel
-input int      InpPanelX = 10;                      // Panel X Position
-input int      InpPanelY = 30;                      // Panel Y Position
-
-input group "===== Alert Settings ====="
-input bool     InpEnableBrickAlerts = false;        // Alert on New Brick
-input bool     InpEnableReversalAlerts = true;      // Alert on Reversal
-input bool     InpEnableMultiBrickAlerts = true;    // Alert on Multi-Brick Burst
-input int      InpMultiBrickThreshold = 3;          // Multi-Brick Threshold
-
-input group "===== Display Settings ====="
-input bool     InpShowStatistics = true;            // Show Statistics
-input color    InpPanelColor = clrDarkSlateGray;    // Panel Background Color
-input color    InpTextColor = clrWhite;             // Text Color
-input int      InpFontSize = 9;                     // Font Size
+// All settings are hardcoded for simplicity - no inputs visible to user
 
 //+------------------------------------------------------------------+
 //| Global Variables                                                 |
@@ -43,21 +28,28 @@ int                  g_last_brick_count = 0;        // Last brick count
 bool                 g_last_direction = true;       // Last direction
 datetime             g_last_update_time = 0;        // Last update time
 
-// UI Object Names
-string g_panel_bg = "RemotePanel_BG";
-string g_label_symbol = "RemotePanel_Symbol";
-string g_label_state = "RemotePanel_State";
-string g_label_type = "RemotePanel_Type";
-string g_label_bricksize = "RemotePanel_BrickSize";
-string g_label_bricks = "RemotePanel_Bricks";
-string g_label_lastbrick = "RemotePanel_LastBrick";
-string g_label_stats = "RemotePanel_Stats";
+// UI Configuration (hardcoded)
+const int PANEL_HEIGHT_COLLAPSED = 24;              // Compact panel height
+const int PANEL_HEIGHT_EXPANDED = 72;               // Expanded with radio buttons
+const color PANEL_COLOR = C'40,40,40';              // Dark gray
+const color TEXT_COLOR = clrWhite;                  // White text
+const color HIGHLIGHT_COLOR = C'70,130,180';        // Steel blue
+const int FONT_SIZE = 8;                            // Small font
 
-// Button names
-string g_btn_rebuild = "RemotePanel_BtnRebuild";
-string g_btn_switch_type = "RemotePanel_BtnSwitchType";
-string g_edit_bricksize = "RemotePanel_EditBrickSize";
-string g_btn_apply_bricksize = "RemotePanel_BtnApplyBrickSize";
+// UI State
+bool g_panel_expanded = false;                      // Is panel expanded
+int g_current_panel_height = PANEL_HEIGHT_COLLAPSED; // Current height
+
+// UI Object Names - Compact OVO-style panel
+string g_label_chart_name = "RemotePanel_ChartName";      // Clickable chart type label
+string g_label_brick_size = "RemotePanel_BrickSize";      // Brick size display
+string g_label_brick_count = "RemotePanel_BrickCount";    // Brick count display
+string g_btn_feed = "RemotePanel_BtnFeed";                // Feed button
+
+// Expanded view objects (only visible when expanded)
+string g_radio_mean = "RemotePanel_RadioMean";            // Mean Renko radio
+string g_radio_regular = "RemotePanel_RadioRegular";      // Regular Renko radio
+string g_label_select_type = "RemotePanel_SelectTypeLabel"; // "Select type:" label
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |

@@ -9,7 +9,8 @@
 #property strict
 
 // Include base types from main Nortrading-Renko project
-#include "../../Nortrading-Renko/Include/Renko/RenkoTypes.mqh"
+// Path assumes flat installation: MQL5/Include/RenkoRemote/ and MQL5/Include/Renko/
+#include <Renko/RenkoTypes.mqh>
 
 //+------------------------------------------------------------------+
 //| Remote Command Types                                             |

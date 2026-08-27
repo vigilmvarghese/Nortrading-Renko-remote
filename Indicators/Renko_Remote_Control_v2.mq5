@@ -11,9 +11,10 @@
 #property indicator_height 24  // Compact 24px height
 
 //--- Include files
-#include "../Include/RenkoRemote/RemoteTypes.mqh"
-#include "../Include/RenkoRemote/ChartSymbolParser.mqh"
-#include "../Include/RenkoRemote/GeneratorInterface.mqh"
+// Paths assume flat installation: files copied to MQL5/Include/RenkoRemote/
+#include <RenkoRemote/RemoteTypes.mqh>
+#include <RenkoRemote/ChartSymbolParser.mqh>
+#include <RenkoRemote/GeneratorInterface.mqh>
 
 //+------------------------------------------------------------------+
 //| No Input Parameters - All hardcoded for simplicity              |
