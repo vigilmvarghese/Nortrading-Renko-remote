@@ -359,43 +359,44 @@ void OnFeedButtonClicked()
    // Get the actual chart ID where the generator instance is attached
    AttachedInstanceInfo info = g_generator.GetInstanceInfo();
    long source_chart_id = info.source_chart_id;
+   string source_symbol = info.source_symbol;  // This is the actual symbol (e.g., "US30")
    
-   Print("FEED button: source_chart_id = ", source_chart_id);
-   Print("FEED button: source_symbol = ", info.source_symbol);
-   Print("FEED button: period_token = ", info.period_token);
+   Print("========== FEED Button Clicked ==========");
+   Print("source_chart_id from global var: ", source_chart_id);
+   Print("source_symbol: ", source_symbol);
+   Print("period_token: ", info.period_token);
+   Print("custom_symbol: ", info.custom_symbol_name);
    
-   if(source_chart_id <= 0)
+   // Try primary method: use stored chart ID
+   if(source_chart_id > 0)
    {
-      Alert("Source chart ID not available (ID: ", source_chart_id, ")");
-      Print("Falling back to symbol search method");
-   }
-   else
-   {
-      // Verify chart exists and bring to front
       string chart_symbol = ChartSymbol(source_chart_id);
-      Print("Chart ID ", source_chart_id, " has symbol: ", chart_symbol);
+      Print("Chart ID ", source_chart_id, " has symbol: '", chart_symbol, "'");
       
-      if(chart_symbol != "")
+      if(chart_symbol != "" && chart_symbol != NULL)
       {
          if(ChartSetInteger(source_chart_id, CHART_BRING_TO_TOP, 0, true))
          {
-            Print("✓ Jumped to generator chart: ", chart_symbol, " (ID: ", source_chart_id, ")");
+            Print("✓ SUCCESS: Jumped to generator chart using stored ID");
             return;
          }
          else
          {
-            Print("Failed to bring chart to top, error: ", GetLastError());
+            Print("✗ Failed to bring chart to top, error: ", GetLastError());
          }
       }
       else
       {
-         Print("Chart ID ", source_chart_id, " not found or closed");
+        Print("✗ Chart ID ", source_chart_id, " not found (chart was closed)");
       }
    }
+   else
+   {
+      Print("✗ Invalid source_chart_id: ", source_chart_id);
+   }
    
-   // Fallback: search by source symbol (in case chart ID is stale or invalid)
-   Print("Using fallback: searching for chart with generator indicator");
-   string source_symbol = g_generator.GetSourceSymbol();
+   // Fallback: search all charts for matching symbol with generator indicator
+   Print("========== Using Fallback: Search All Charts ==========");
    long chart_id = ChartFirst();
    int charts_checked = 0;
    
@@ -403,36 +404,50 @@ void OnFeedButtonClicked()
    {
       charts_checked++;
       string symbol = ChartSymbol(chart_id);
-      Print("Checking chart ", chart_id, ": ", symbol);
       
+      // Only check charts with matching source symbol
       if(symbol == source_symbol)
       {
-         Print("Found matching symbol, checking for generator indicator...");
-         // Check if this chart has the generator indicator
+         Print("[", charts_checked, "] Chart ", chart_id, ": ", symbol, " - MATCH, checking indicators...");
+         
+         // Check main chart window (subwindow 0) for generator
          int indicator_count = ChartIndicatorsTotal(chart_id, 0);
-         Print("Chart has ", indicator_count, " indicators");
+         Print("    Main window has ", indicator_count, " indicators");
          
          for(int i = 0; i < indicator_count; i++)
          {
             string indicator_name = ChartIndicatorName(chart_id, 0, i);
-            Print("  Indicator[", i, "]: ", indicator_name);
+            Print("      [", i, "]: ", indicator_name);
             
             if(StringFind(indicator_name, "OVO_Renko_Generator") >= 0)
             {
-               // Found the chart with generator
+               Print("    ✓ Found OVO_Renko_Generator!");
+               
                if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
                {
-                  Print("✓ Jumped to generator chart (fallback): ", source_symbol);
+                  Print("✓ SUCCESS: Jumped to generator chart (fallback method)");
                   return;
+               }
+               else
+               {
+                  Print("✗ Failed to bring chart to top, error: ", GetLastError());
                }
             }
          }
+         
+         Print("    ✗ No generator found on this chart");
       }
+      else
+      {
+         Print("[", charts_checked, "] Chart ", chart_id, ": ", symbol, " - skip");
+      }
+      
       chart_id = ChartNext(chart_id);
    }
    
-   Alert("Source chart not found after checking ", charts_checked, " charts");
-   Print("❌ Failed to find generator chart for ", source_symbol);
+   Print("========== Search Complete ==========");
+   Alert("Generator chart not found after checking ", charts_checked, " charts");
+   Print("❌ FAILED: Could not find generator chart for ", source_symbol);
 }
 
 //+------------------------------------------------------------------+
