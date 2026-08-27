@@ -47,10 +47,14 @@ const string g_btn_brick_decrease = PREFIX + "BtnDecrease";  // ◄ Left arrow (
 const string g_btn_brick_increase = PREFIX + "BtnIncrease";  // ► Right arrow (×2)
 const string g_label_brick_count = PREFIX + "BrickCount";    // Brick count display
 const string g_btn_feed = PREFIX + "FeedBtn";                // "FEED" button
+const string g_btn_close = PREFIX + "CloseBtn";              // "X" close button
 
 // Expanded view objects (hidden unless expanded)
 const string g_radio_mean = PREFIX + "RadioMean";             // Mean Renko option
 const string g_radio_regular = PREFIX + "RadioRegular";       // Regular Renko option
+
+// Window tracking
+int g_indicator_window = -1;                                 // Cached indicator window index
 
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
@@ -69,6 +73,16 @@ int OnInit()
    
    // Set compact update interval
    g_generator.SetReadInterval(500);
+   
+   // Find and cache indicator window index
+   g_indicator_window = ChartWindowFind();
+   if(g_indicator_window < 0)
+   {
+      Print("ERROR: Failed to find indicator window");
+      return INIT_FAILED;
+   }
+   
+   Print("Remote Control in window ", g_indicator_window);
    
    // Create compact OVO-style panel
    CreateCompactPanel();
@@ -147,6 +161,12 @@ void OnChartEvent(const int id,
          OnFeedButtonClicked();
          ObjectSetInteger(0, g_btn_feed, OBJPROP_STATE, false);
       }
+      // Close button clicked
+      else if(sparam == g_btn_close)
+      {
+         OnCloseButtonClicked();
+         ObjectSetInteger(0, g_btn_close, OBJPROP_STATE, false);
+      }
       // Mean Renko radio clicked
       else if(sparam == g_radio_mean)
       {
@@ -204,6 +224,10 @@ void CreateCompactPanel()
    
    // Feed Button
    CreateCompactButton(g_btn_feed, x_pos, y_base - 2, 40, 20, "FEED");
+   x_pos += 42;
+   
+   // Close Button (X)
+   CreateCloseButton(g_btn_close, x_pos, y_base - 2, 20, 20);
 }
 
 //+------------------------------------------------------------------+
@@ -217,6 +241,7 @@ void DestroyCompactPanel()
    ObjectDelete(0, g_btn_brick_increase);
    ObjectDelete(0, g_label_brick_count);
    ObjectDelete(0, g_btn_feed);
+   ObjectDelete(0, g_btn_close);
    ObjectDelete(0, g_radio_mean);
    ObjectDelete(0, g_radio_regular);
    
@@ -335,40 +360,69 @@ void OnFeedButtonClicked()
    AttachedInstanceInfo info = g_generator.GetInstanceInfo();
    long source_chart_id = info.source_chart_id;
    
+   Print("FEED button: source_chart_id = ", source_chart_id);
+   Print("FEED button: source_symbol = ", info.source_symbol);
+   Print("FEED button: period_token = ", info.period_token);
+   
    if(source_chart_id <= 0)
    {
-      Alert("Source chart ID not available");
-      return;
+      Alert("Source chart ID not available (ID: ", source_chart_id, ")");
+      Print("Falling back to symbol search method");
    }
-   
-   // Verify chart exists and bring to front
-   if(ChartSymbol(source_chart_id) != "")
+   else
    {
-      if(ChartSetInteger(source_chart_id, CHART_BRING_TO_TOP, 0, true))
+      // Verify chart exists and bring to front
+      string chart_symbol = ChartSymbol(source_chart_id);
+      Print("Chart ID ", source_chart_id, " has symbol: ", chart_symbol);
+      
+      if(chart_symbol != "")
       {
-         Print("Jumped to generator chart: ", ChartSymbol(source_chart_id), " (ID: ", source_chart_id, ")");
-         return;
+         if(ChartSetInteger(source_chart_id, CHART_BRING_TO_TOP, 0, true))
+         {
+            Print("✓ Jumped to generator chart: ", chart_symbol, " (ID: ", source_chart_id, ")");
+            return;
+         }
+         else
+         {
+            Print("Failed to bring chart to top, error: ", GetLastError());
+         }
+      }
+      else
+      {
+         Print("Chart ID ", source_chart_id, " not found or closed");
       }
    }
    
-   // Fallback: search by source symbol (in case chart ID is stale)
+   // Fallback: search by source symbol (in case chart ID is stale or invalid)
+   Print("Using fallback: searching for chart with generator indicator");
    string source_symbol = g_generator.GetSourceSymbol();
    long chart_id = ChartFirst();
+   int charts_checked = 0;
+   
    while(chart_id >= 0)
    {
-      if(ChartSymbol(chart_id) == source_symbol)
+      charts_checked++;
+      string symbol = ChartSymbol(chart_id);
+      Print("Checking chart ", chart_id, ": ", symbol);
+      
+      if(symbol == source_symbol)
       {
+         Print("Found matching symbol, checking for generator indicator...");
          // Check if this chart has the generator indicator
          int indicator_count = ChartIndicatorsTotal(chart_id, 0);
+         Print("Chart has ", indicator_count, " indicators");
+         
          for(int i = 0; i < indicator_count; i++)
          {
             string indicator_name = ChartIndicatorName(chart_id, 0, i);
+            Print("  Indicator[", i, "]: ", indicator_name);
+            
             if(StringFind(indicator_name, "OVO_Renko_Generator") >= 0)
             {
                // Found the chart with generator
                if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
                {
-                  Print("Jumped to generator chart (fallback): ", source_symbol);
+                  Print("✓ Jumped to generator chart (fallback): ", source_symbol);
                   return;
                }
             }
@@ -377,7 +431,32 @@ void OnFeedButtonClicked()
       chart_id = ChartNext(chart_id);
    }
    
-   Alert("Source chart not found: ", source_symbol);
+   Alert("Source chart not found after checking ", charts_checked, " charts");
+   Print("❌ Failed to find generator chart for ", source_symbol);
+}
+
+//+------------------------------------------------------------------+
+//| Close Button Clicked - Remove indicator from chart               |
+//+------------------------------------------------------------------+
+void OnCloseButtonClicked()
+{
+   Print("Close button clicked - removing Remote Control indicator");
+   
+   // Remove indicator from chart
+   long chart_id = ChartID();
+   int window = g_indicator_window;
+   
+   string indicator_name = "Renko_Remote_Control_v2";
+   if(ChartIndicatorDelete(chart_id, window, indicator_name))
+   {
+      Print("Remote Control indicator removed successfully");
+   }
+   else
+   {
+      Print("Failed to remove indicator, error: ", GetLastError());
+      // Fallback: just hide the panel
+      DestroyCompactPanel();
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -500,7 +579,7 @@ void CheckBrickAlerts()
 //+------------------------------------------------------------------+
 void CreateLabel(string name, int x, int y, string text, color clr)
 {
-   ObjectCreate(0, name, OBJ_LABEL, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_LABEL, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -518,7 +597,7 @@ void CreateLabel(string name, int x, int y, string text, color clr)
 //+------------------------------------------------------------------+
 void CreateClickableLabel(string name, int x, int y, string text, color clr)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, 80);
@@ -540,7 +619,7 @@ void CreateClickableLabel(string name, int x, int y, string text, color clr)
 //+------------------------------------------------------------------+
 void CreateCompactButton(string name, int x, int y, int width, int height, string text)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
@@ -558,11 +637,34 @@ void CreateCompactButton(string name, int x, int y, int width, int height, strin
 }
 
 //+------------------------------------------------------------------+
+//| Helper: Create Close Button (red X)                              |
+//+------------------------------------------------------------------+
+void CreateCloseButton(string name, int x, int y, int width, int height)
+{
+   ObjectCreate(0, name, OBJ_BUTTON, g_indicator_window, 0, 0);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, height);
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetString(0, name, OBJPROP_TEXT, "X");
+   ObjectSetString(0, name, OBJPROP_FONT, "Arial Bold");
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 10);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, clrWhite);
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, clrCrimson);
+   ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, clrDarkRed);
+   ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_STATE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+}
+
+//+------------------------------------------------------------------+
 //| Helper: Create Edit Field (white background, editable)           |
 //+------------------------------------------------------------------+
 void CreateEditField(string name, int x, int y, int width, int height, string text)
 {
-   ObjectCreate(0, name, OBJ_EDIT, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_EDIT, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
@@ -586,7 +688,7 @@ void CreateEditField(string name, int x, int y, int width, int height, string te
 //+------------------------------------------------------------------+
 void CreateArrowButton(string name, int x, int y, int width, int height, string text)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
@@ -604,7 +706,7 @@ void CreateArrowButton(string name, int x, int y, int width, int height, string 
 }
 void CreateRadioButton(string name, int x, int y, string text, bool selected)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, g_indicator_window, 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, 120);
