@@ -410,32 +410,54 @@ void OnFeedButtonClicked()
       {
          Print("[", charts_checked, "] Chart ", chart_id, ": ", symbol, " - MATCH, checking indicators...");
          
-         // Check main chart window (subwindow 0) for generator
-         int indicator_count = ChartIndicatorsTotal(chart_id, 0);
-         Print("    Main window has ", indicator_count, " indicators");
+         // Check ALL subwindows (0 = main window, 1+ = indicator subwindows)
+         int total_windows = (int)ChartGetInteger(chart_id, CHART_WINDOWS_TOTAL);
+         Print("    Chart has ", total_windows, " windows");
          
-         for(int i = 0; i < indicator_count; i++)
+         bool found_generator = false;
+         
+         for(int window = 0; window < total_windows; window++)
          {
-            string indicator_name = ChartIndicatorName(chart_id, 0, i);
-            Print("      [", i, "]: ", indicator_name);
+            int indicator_count = ChartIndicatorsTotal(chart_id, window);
             
-            if(StringFind(indicator_name, "OVO_Renko_Generator") >= 0)
+            if(indicator_count > 0)
             {
-               Print("    ✓ Found OVO_Renko_Generator!");
+               Print("    Window ", window, " has ", indicator_count, " indicators:");
                
-               if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
+               for(int i = 0; i < indicator_count; i++)
                {
-                  Print("✓ SUCCESS: Jumped to generator chart (fallback method)");
-                  return;
-               }
-               else
-               {
-                  Print("✗ Failed to bring chart to top, error: ", GetLastError());
+                  string indicator_name = ChartIndicatorName(chart_id, window, i);
+                  Print("      [", i, "]: ", indicator_name);
+                  
+                  if(StringFind(indicator_name, "OVO_Renko_Generator") >= 0)
+                  {
+                     Print("    ✓ Found OVO_Renko_Generator in window ", window, "!");
+                     found_generator = true;
+                     break;
+                  }
                }
             }
+            
+            if(found_generator)
+               break;
          }
          
-         Print("    ✗ No generator found on this chart");
+         if(found_generator)
+         {
+            if(ChartSetInteger(chart_id, CHART_BRING_TO_TOP, 0, true))
+            {
+               Print("✓ SUCCESS: Jumped to generator chart (fallback method)");
+               return;
+            }
+            else
+            {
+               Print("✗ Failed to bring chart to top, error: ", GetLastError());
+            }
+         }
+         else
+         {
+            Print("    ✗ No generator found on this chart");
+         }
       }
       else
       {
