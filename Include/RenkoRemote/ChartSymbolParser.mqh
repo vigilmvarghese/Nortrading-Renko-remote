@@ -48,6 +48,45 @@ public:
    //--- Parse custom symbol name
    bool Parse(const string symbol)
    {
+      Print("ChartSymbolParser: Parsing '", symbol, "'");
+      
+      m_chart_symbol = symbol;
+      m_is_valid = false;
+      
+      // Custom symbols have format: SOURCE.TOKEN (e.g., US30.M61)
+      int dot_pos = StringFind(symbol, ".");
+      
+      if(dot_pos < 0)
+      {
+         Print("  ✗ No '.' found - not a custom symbol");
+         return false;
+      }
+      
+      // Extract source symbol and token
+      m_source_symbol = StringSubstr(symbol, 0, dot_pos);
+      m_period_token = StringSubstr(symbol, dot_pos + 1);
+      
+      Print("  Source symbol: '", m_source_symbol, "'");
+      Print("  Period token: '", m_period_token, "'");
+      
+      // Validate token format (should be like M61, M62, etc.)
+      if(StringLen(m_period_token) < 2)
+      {
+         Print("  ✗ Invalid token length");
+         return false;
+      }
+      
+      // Check if first character is 'M'
+      if(StringGetCharacter(m_period_token, 0) != 'M')
+      {
+         Print("  ✗ Token doesn't start with 'M'");
+         return false;
+      }
+      
+      m_is_valid = true;
+      Print("  ✓ Valid Renko custom symbol");
+      return true;
+   }
       m_chart_symbol = symbol;
       m_is_valid = false;
       m_source_symbol = "";

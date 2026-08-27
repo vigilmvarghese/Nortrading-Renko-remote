@@ -61,15 +61,40 @@ int g_indicator_window = -1;                                 // Cached indicator
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   Print("========== Remote Control OnInit ==========");
+   Print("Chart symbol: ", ChartSymbol());
+   Print("Chart ID: ", ChartID());
+   
    // Initialize generator interface
    if(!g_generator.Initialize())
    {
       Print("ERROR: Failed to initialize generator interface");
-      Print("This indicator must be attached to a Renko custom symbol chart (e.g., US30.M61)");
+      Print("Possible reasons:");
+      Print("  1. Chart symbol is not a Renko custom symbol (e.g., US30.M61)");
+      Print("  2. Generator is not active for this symbol");
+      Print("  3. Global variables not found");
+      
+      // Try to parse anyway to show what we got
+      string symbol = ChartSymbol();
+      Print("Chart symbol being parsed: '", symbol, "'");
+      
+      // Check if it looks like a custom symbol
+      if(StringFind(symbol, ".") < 0)
+      {
+         Alert("This is not a Renko custom symbol chart. Expected format: SYMBOL.TOKEN (e.g., US30.M61)");
+      }
+      else
+      {
+         Alert("Generator not found for ", symbol, ". Make sure the generator is running.");
+      }
+      
       return INIT_FAILED;
    }
    
-   Print("Remote Control initialized for: ", g_generator.GetCustomSymbol());
+   Print("✓ Remote Control initialized for: ", g_generator.GetCustomSymbol());
+   Print("  Source symbol: ", g_generator.GetSourceSymbol());
+   Print("  Period token: ", g_generator.GetPeriodToken());
+   Print("  Generator active: ", g_generator.IsGeneratorActive());
    
    // Set compact update interval
    g_generator.SetReadInterval(500);
@@ -79,13 +104,15 @@ int OnInit()
    if(g_indicator_window < 0)
    {
       Print("ERROR: Failed to find indicator window");
+      Print("ChartWindowFind() returned: ", g_indicator_window);
       return INIT_FAILED;
    }
    
-   Print("Remote Control in window ", g_indicator_window);
+   Print("✓ Remote Control in window ", g_indicator_window);
    
    // Create compact OVO-style panel
    CreateCompactPanel();
+   Print("✓ Panel created");
    
    // Set timer for updates
    EventSetTimer(1);
@@ -93,6 +120,7 @@ int OnInit()
    // Set indicator window height
    IndicatorSetInteger(INDICATOR_HEIGHT, PANEL_HEIGHT_COLLAPSED);
    
+   Print("========== Initialization Complete ==========");
    return INIT_SUCCEEDED;
 }
 

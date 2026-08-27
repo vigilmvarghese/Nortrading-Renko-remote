@@ -60,18 +60,25 @@ public:
    //--- Read generator state from global variables
    bool ReadGeneratorState()
    {
+      Print("ReadGeneratorState: Checking global variable: ", m_global_prefix, "Active");
+      
       // Check if generator is active
       if(!GlobalVariableCheck(m_global_prefix + "Active"))
       {
+         Print("  ✗ Global variable not found - generator not running");
          m_instance_info.generator_active = false;
          m_instance_info.is_responsive = false;
          return false;
       }
       
       m_instance_info.generator_active = (GlobalVariableGet(m_global_prefix + "Active") > 0.5);
+      Print("  Generator active: ", m_instance_info.generator_active);
       
       if(!m_instance_info.generator_active)
+      {
+         Print("  ✗ Generator is not active");
          return false;
+      }
       
       // Read state variables
       if(GlobalVariableCheck(m_global_prefix + "State"))
@@ -101,6 +108,11 @@ public:
       m_instance_info.last_update_time = TimeCurrent();
       m_instance_info.is_responsive = true;
       m_last_read_time = GetTickCount();
+      
+      Print("  ✓ Generator state read successfully");
+      Print("    Brick size: ", m_instance_info.brick_size);
+      Print("    Total bricks: ", m_instance_info.total_bricks);
+      Print("    Source chart ID: ", m_instance_info.source_chart_id);
       
       return true;
    }
