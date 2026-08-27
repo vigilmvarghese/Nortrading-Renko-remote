@@ -6,8 +6,9 @@
 #property copyright "Copyright 2024, Nortrading Renko Project"
 #property link      "https://github.com/vigilmvarghese/Nortrading-Renko-Remote"
 #property version   "2.00"
-#property indicator_chart_window
+#property indicator_separate_window  // Create in separate indicator window
 #property indicator_plots 0
+#property indicator_buffers 0
 #property indicator_height 24  // Compact 24px height
 
 //--- Include files
@@ -340,7 +341,7 @@ void CheckBrickAlerts()
 //+------------------------------------------------------------------+
 void CreateLabel(string name, int x, int y, string text, color clr)
 {
-   ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+   ObjectCreate(0, name, OBJ_LABEL, ChartWindowFind(), 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
@@ -349,6 +350,8 @@ void CreateLabel(string name, int x, int y, string text, color clr)
    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, FONT_SIZE);
    ObjectSetInteger(0, name, OBJPROP_COLOR, clr);
    ObjectSetInteger(0, name, OBJPROP_BACK, false);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
 }
 
 //+------------------------------------------------------------------+
@@ -356,7 +359,7 @@ void CreateLabel(string name, int x, int y, string text, color clr)
 //+------------------------------------------------------------------+
 void CreateClickableLabel(string name, int x, int y, string text, color clr)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, 0, 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, 80);
@@ -369,6 +372,8 @@ void CreateClickableLabel(string name, int x, int y, string text, color clr)
    ObjectSetInteger(0, name, OBJPROP_BGCOLOR, clr);
    ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, clr);
    ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
 }
 
 //+------------------------------------------------------------------+
@@ -376,7 +381,7 @@ void CreateClickableLabel(string name, int x, int y, string text, color clr)
 //+------------------------------------------------------------------+
 void CreateCompactButton(string name, int x, int y, int width, int height, string text)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, 0, 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
@@ -389,6 +394,8 @@ void CreateCompactButton(string name, int x, int y, int width, int height, strin
    ObjectSetInteger(0, name, OBJPROP_BGCOLOR, BUTTON_COLOR);
    ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, C'80,80,80');
    ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
 }
 
 //+------------------------------------------------------------------+
@@ -396,7 +403,7 @@ void CreateCompactButton(string name, int x, int y, int width, int height, strin
 //+------------------------------------------------------------------+
 void CreateRadioButton(string name, int x, int y, string text, bool selected)
 {
-   ObjectCreate(0, name, OBJ_BUTTON, 0, 0, 0);
+   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
    ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
    ObjectSetInteger(0, name, OBJPROP_XSIZE, 120);
@@ -411,6 +418,8 @@ void CreateRadioButton(string name, int x, int y, string text, bool selected)
    ObjectSetInteger(0, name, OBJPROP_BGCOLOR, selected ? HIGHLIGHT_COLOR : BUTTON_COLOR);
    ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, C'80,80,80');
    ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
 }
 
 //+------------------------------------------------------------------+
