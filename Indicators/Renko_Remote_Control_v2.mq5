@@ -42,9 +42,11 @@ int g_last_brick_count = 0;                         // For alerts
 // UI Object Names - Compact OVO-style panel
 const string PREFIX = "RenkoRemote_";
 const string g_label_chart_type = PREFIX + "ChartType";      // Clickable: "Mean Renko" or "Regular Renko"
-const string g_label_brick_size = PREFIX + "BrickSize";      // "600 pts"
-const string g_label_brick_count = PREFIX + "BrickCount";    // "1847"
-const string g_btn_feed = PREFIX + "FeedBtn";                 // "FEED" button
+const string g_edit_brick_size = PREFIX + "EditBrickSize";   // Editable brick size field
+const string g_btn_brick_decrease = PREFIX + "BtnDecrease";  // ◄ Left arrow (÷2)
+const string g_btn_brick_increase = PREFIX + "BtnIncrease";  // ► Right arrow (×2)
+const string g_label_brick_count = PREFIX + "BrickCount";    // Brick count display
+const string g_btn_feed = PREFIX + "FeedBtn";                // "FEED" button
 
 // Expanded view objects (hidden unless expanded)
 const string g_radio_mean = PREFIX + "RadioMean";             // Mean Renko option
@@ -127,6 +129,18 @@ void OnChartEvent(const int id,
          TogglePanelExpansion();
          ObjectSetInteger(0, g_label_chart_type, OBJPROP_STATE, false);
       }
+      // Left arrow - decrease brick size (÷2)
+      else if(sparam == g_btn_brick_decrease)
+      {
+         OnBrickSizeDecrease();
+         ObjectSetInteger(0, g_btn_brick_decrease, OBJPROP_STATE, false);
+      }
+      // Right arrow - increase brick size (×2)
+      else if(sparam == g_btn_brick_increase)
+      {
+         OnBrickSizeIncrease();
+         ObjectSetInteger(0, g_btn_brick_increase, OBJPROP_STATE, false);
+      }
       // Feed button clicked
       else if(sparam == g_btn_feed)
       {
@@ -146,6 +160,15 @@ void OnChartEvent(const int id,
       
       ChartRedraw();
    }
+   
+   // Edit field changed - manual entry
+   if(id == CHARTEVENT_OBJECT_ENDEDIT)
+   {
+      if(sparam == g_edit_brick_size)
+      {
+         OnBrickSizeManualEdit();
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -161,10 +184,18 @@ void CreateCompactPanel()
                         g_generator.GetChartTypeString(), HIGHLIGHT_COLOR);
    x_pos += 85;
    
-   // Brick Size - e.g., "600 pts"
-   CreateLabel(g_label_brick_size, x_pos, y_base, 
-               StringFormat("%.0f pts", g_generator.GetBrickSize()), TEXT_COLOR);
-   x_pos += 60;
+   // Left Arrow Button (Divide by 2)
+   CreateArrowButton(g_btn_brick_decrease, x_pos, y_base - 2, 20, 20, "◄");
+   x_pos += 22;
+   
+   // Brick Size Edit Field - white background, editable
+   CreateEditField(g_edit_brick_size, x_pos, y_base - 2, 60, 20, 
+                   StringFormat("%.0f", g_generator.GetBrickSize()));
+   x_pos += 62;
+   
+   // Right Arrow Button (Multiply by 2)
+   CreateArrowButton(g_btn_brick_increase, x_pos, y_base - 2, 20, 20, "►");
+   x_pos += 25;
    
    // Brick Count - e.g., "1847"
    CreateLabel(g_label_brick_count, x_pos, y_base, 
@@ -181,7 +212,9 @@ void CreateCompactPanel()
 void DestroyCompactPanel()
 {
    ObjectDelete(0, g_label_chart_type);
-   ObjectDelete(0, g_label_brick_size);
+   ObjectDelete(0, g_edit_brick_size);
+   ObjectDelete(0, g_btn_brick_decrease);
+   ObjectDelete(0, g_btn_brick_increase);
    ObjectDelete(0, g_label_brick_count);
    ObjectDelete(0, g_btn_feed);
    ObjectDelete(0, g_radio_mean);
@@ -198,9 +231,9 @@ void UpdateCompactPanel()
    // Update chart type label
    ObjectSetString(0, g_label_chart_type, OBJPROP_TEXT, g_generator.GetChartTypeString());
    
-   // Update brick size
-   ObjectSetString(0, g_label_brick_size, OBJPROP_TEXT, 
-                   StringFormat("%.0f pts", g_generator.GetBrickSize()));
+   // Update brick size edit field
+   ObjectSetString(0, g_edit_brick_size, OBJPROP_TEXT, 
+                   StringFormat("%.0f", g_generator.GetBrickSize()));
    
    // Update brick count
    ObjectSetString(0, g_label_brick_count, OBJPROP_TEXT, 
@@ -315,6 +348,99 @@ void OnFeedButtonClicked()
 }
 
 //+------------------------------------------------------------------+
+//| Brick Size Decrease - Divide by 2                                |
+//+------------------------------------------------------------------+
+void OnBrickSizeDecrease()
+{
+   if(!g_generator.IsGeneratorActive())
+   {
+      Alert("Generator is not active");
+      return;
+   }
+   
+   double current_size = g_generator.GetBrickSize();
+   double new_size = current_size / 2.0;
+   
+   // Minimum brick size check
+   if(new_size < 1.0)
+   {
+      Alert("Brick size too small (minimum: 1)");
+      return;
+   }
+   
+   ApplyBrickSize(new_size);
+}
+
+//+------------------------------------------------------------------+
+//| Brick Size Increase - Multiply by 2                              |
+//+------------------------------------------------------------------+
+void OnBrickSizeIncrease()
+{
+   if(!g_generator.IsGeneratorActive())
+   {
+      Alert("Generator is not active");
+      return;
+   }
+   
+   double current_size = g_generator.GetBrickSize();
+   double new_size = current_size * 2.0;
+   
+   // Maximum brick size check
+   if(new_size > 100000.0)
+   {
+      Alert("Brick size too large (maximum: 100000)");
+      return;
+   }
+   
+   ApplyBrickSize(new_size);
+}
+
+//+------------------------------------------------------------------+
+//| Brick Size Manual Edit - User typed value                        |
+//+------------------------------------------------------------------+
+void OnBrickSizeManualEdit()
+{
+   if(!g_generator.IsGeneratorActive())
+   {
+      Alert("Generator is not active");
+      return;
+   }
+   
+   string size_text = ObjectGetString(0, g_edit_brick_size, OBJPROP_TEXT);
+   double new_size = StringToDouble(size_text);
+   
+   // Validate
+   if(new_size <= 0 || new_size > 100000)
+   {
+      Alert("Invalid brick size (must be 1-100000)");
+      // Restore previous value
+      ObjectSetString(0, g_edit_brick_size, OBJPROP_TEXT, 
+                      StringFormat("%.0f", g_generator.GetBrickSize()));
+      return;
+   }
+   
+   ApplyBrickSize(new_size);
+}
+
+//+------------------------------------------------------------------+
+//| Apply Brick Size - Send to generator and update display          |
+//+------------------------------------------------------------------+
+void ApplyBrickSize(double new_size)
+{
+   if(g_generator.SendChangeBrickSize(new_size))
+   {
+      Print("Brick size changed to ", new_size);
+      
+      // Update display immediately
+      ObjectSetString(0, g_edit_brick_size, OBJPROP_TEXT, StringFormat("%.0f", new_size));
+   }
+   else
+   {
+      Alert("Failed to send brick size change command");
+   }
+}
+
+//+------------------------------------------------------------------+
 //| Check for brick changes and trigger alerts                       |
 //+------------------------------------------------------------------+
 void CheckBrickAlerts()
@@ -399,8 +525,50 @@ void CreateCompactButton(string name, int x, int y, int width, int height, strin
 }
 
 //+------------------------------------------------------------------+
-//| Helper: Create Radio Button                                      |
+//| Helper: Create Edit Field (white background, editable)           |
 //+------------------------------------------------------------------+
+void CreateEditField(string name, int x, int y, int width, int height, string text)
+{
+   ObjectCreate(0, name, OBJ_EDIT, ChartWindowFind(), 0, 0);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, height);
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+   ObjectSetString(0, name, OBJPROP_FONT, "Arial");
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, FONT_SIZE);
+   ObjectSetInteger(0, name, OBJPROP_COLOR, clrBlack);
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, clrWhite);  // White background
+   ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, C'128,128,128');
+   ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, name, OBJPROP_ALIGN, ALIGN_CENTER);
+   ObjectSetInteger(0, name, OBJPROP_READONLY, false);  // Editable
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+}
+
+//+------------------------------------------------------------------+
+//| Helper: Create Arrow Button (for ◄ ►)                            |
+//+------------------------------------------------------------------+
+void CreateArrowButton(string name, int x, int y, int width, int height, string text)
+{
+   ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
+   ObjectSetInteger(0, name, OBJPROP_XDISTANCE, x);
+   ObjectSetInteger(0, name, OBJPROP_YDISTANCE, y);
+   ObjectSetInteger(0, name, OBJPROP_XSIZE, width);
+   ObjectSetInteger(0, name, OBJPROP_YSIZE, height);
+   ObjectSetInteger(0, name, OBJPROP_CORNER, CORNER_LEFT_UPPER);
+   ObjectSetString(0, name, OBJPROP_TEXT, text);
+   ObjectSetString(0, name, OBJPROP_FONT, "Arial");
+   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);  // Slightly larger for arrows
+   ObjectSetInteger(0, name, OBJPROP_COLOR, clrBlack);
+   ObjectSetInteger(0, name, OBJPROP_BGCOLOR, C'200,200,200');  // Light gray
+   ObjectSetInteger(0, name, OBJPROP_BORDER_COLOR, C'128,128,128');
+   ObjectSetInteger(0, name, OBJPROP_BORDER_TYPE, BORDER_RAISED);
+   ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+}
 void CreateRadioButton(string name, int x, int y, string text, bool selected)
 {
    ObjectCreate(0, name, OBJ_BUTTON, ChartWindowFind(), 0, 0);
