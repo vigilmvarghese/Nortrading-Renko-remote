@@ -21,7 +21,7 @@ private:
    CChartSymbolParser   m_parser;                // Symbol parser
    string               m_global_prefix;         // Global variable prefix
    
-   datetime             m_last_read_time;        // Last state read time
+   uint                 m_last_read_time;        // Last state read time (GetTickCount)
    int                  m_read_interval_ms;      // Read interval
    
    AttachedInstanceInfo m_instance_info;         // Cached instance info
@@ -108,7 +108,8 @@ public:
    //--- Update state if enough time passed
    bool UpdateState()
    {
-      int elapsed = GetTickCount() - m_last_read_time;
+      uint current_tick = GetTickCount();
+      int elapsed = (int)(current_tick - m_last_read_time);
       if(elapsed < m_read_interval_ms)
          return true;  // Not time yet
       
@@ -187,8 +188,8 @@ public:
       return (ENUM_COMMAND_STATUS)GlobalVariableGet(m_global_prefix + "ACK_Status");
    }
    
-   //--- Get instance info
-   const AttachedInstanceInfo& GetInstanceInfo() const
+   //--- Get instance info (return by value to avoid reference issues)
+   AttachedInstanceInfo GetInstanceInfo() const
    {
       return m_instance_info;
    }

@@ -269,7 +269,7 @@ void DestroyControlPanel()
 //+------------------------------------------------------------------+
 void UpdateControlPanel()
 {
-   const AttachedInstanceInfo &info = g_generator.GetInstanceInfo();
+   AttachedInstanceInfo info = g_generator.GetInstanceInfo();
    
    // Update state
    ObjectSetString(0, g_label_state, OBJPROP_TEXT, "State: " + g_generator.GetStateString());
@@ -326,7 +326,7 @@ void UpdateControlPanel()
 //+------------------------------------------------------------------+
 void CheckBrickChanges()
 {
-   const AttachedInstanceInfo &info = g_generator.GetInstanceInfo();
+   AttachedInstanceInfo info = g_generator.GetInstanceInfo();
    
    // Check if brick count changed
    if(info.total_bricks != g_last_brick_count)

@@ -137,7 +137,7 @@ struct AttachedInstanceInfo
    //--- Check if can send commands
    bool CanSendCommands() const
    {
-      return is_active && is_responsive && 
+      return generator_active && is_responsive && 
              (current_state == STATE_LIVE || current_state == STATE_PANEL_ONLY);
    }
 };
